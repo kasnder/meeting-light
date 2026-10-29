@@ -1,6 +1,7 @@
 """Build locally on the target OS; CI uses the identical commands."""
 import hashlib
 import json
+import os
 from pathlib import Path
 import platform
 import shutil
@@ -46,7 +47,12 @@ if mac:
     executable = bundle / 'Contents/MacOS/MeetingLight'
 else:
     executable = bundle / 'MeetingLight.exe'
-subprocess.run([str(executable), '--self-check'], check=True, timeout=90)
+check_report = build / 'selfcheck.json'
+try:
+    subprocess.run([str(executable), '--self-check'], check=True, timeout=90,
+                   env=dict(os.environ, MEETINGLIGHT_CHECK_REPORT=str(check_report)))
+finally:
+    print(check_report.read_text() if check_report.exists() else 'Self-check did not reach application entry point', flush=True)
 artifact = root / 'artifacts'
 artifact.mkdir(exist_ok=True)
 arch = platform.machine().lower().replace('amd64', 'x86_64')

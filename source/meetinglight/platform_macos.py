@@ -9,6 +9,7 @@ import threading
 from cryptography.fernet import Fernet, InvalidToken
 from keyring.backends.macOS import Keyring
 
+KEYCHAIN_SERVICE = "net.kollnig.MeetingLight"
 _key_lock = threading.Lock()
 _cipher = None
 
@@ -19,12 +20,12 @@ def protect(data, decrypt=False):
         if _cipher is None:
             # Select Apple's Keychain explicitly; never accept a plaintext backend.
             backend = Keyring()
-            key = backend.get_password('net.kollnig.MeetingLight', 'calendar-storage-v1')
+            key = backend.get_password(KEYCHAIN_SERVICE, 'calendar-storage-v1')
             if key is None:
                 if decrypt:
                     raise OSError('Calendar encryption key is unavailable')
                 key = Fernet.generate_key().decode('ascii')
-                backend.set_password('net.kollnig.MeetingLight', 'calendar-storage-v1', key)
+                backend.set_password(KEYCHAIN_SERVICE, 'calendar-storage-v1', key)
             _cipher = Fernet(key.encode('ascii'))
     try:
         return _cipher.decrypt(data) if decrypt else _cipher.encrypt(data)
