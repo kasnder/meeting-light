@@ -2,7 +2,9 @@
 
 Windows and macOS downloads are available under GitHub Releases. See [MACOS.md](MACOS.md) for Mac setup and preview limitations. Builds run on GitHub; no local SDK is required.
 
-A local Windows Python app that reminds you about upcoming calendar events. No Google OAuth registration, backend, telemetry, .NET SDK, or bundled Python executable.
+A local Python app for Windows and macOS that reminds you about upcoming calendar events. No Google OAuth registration, backend, or telemetry. Run it from Python or use a self-contained release download.
+
+Inspired by [MeetingBar](https://meetingbar.app/), the macOS-only menu-bar app for keeping track of upcoming meetings and joining them in one click. Meeting Light began with the desire for a similar experience on Windows, using private iCal feeds and persistent reminders.
 
 ## Start and use
 
