@@ -12,7 +12,7 @@ from tkinter import ttk, filedialog, messagebox
 import webbrowser
 
 import pystray
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageTk
 
 from .core import DEFAULTS, Event, Scheduler, eligible, merge_events, now_utc, UTC
 from .feeds import import_sources, load_all
@@ -78,8 +78,14 @@ class App:
         self.popup_labels = {}
         self.settings_window = None
         self.last_agenda = None
+        platform.set_app_identity()
         self.root = tk.Tk()
         self.root.withdraw()
+        # Set Tk's default for this window and all subsequent Toplevels.
+        # Keep PhotoImage references alive for the lifetime of the application.
+        self.window_icons = [ImageTk.PhotoImage(icon_image().resize((size, size), Image.Resampling.LANCZOS), master=self.root)
+                             for size in (16, 32, 48, 64)]
+        self.root.iconphoto(True, *self.window_icons)
         self.root.title("Meeting Light" + (" — Demo" if demo else ""))
         self.root.geometry("850x540")
         self.root.minsize(650, 400)

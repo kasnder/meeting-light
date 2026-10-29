@@ -71,3 +71,17 @@ def test_instance_lock(tmp_path):
     third = InstanceLock(tmp_path)
     assert third.acquired
     third.close()
+
+
+def test_startup_can_be_enabled_and_disabled_without_touching_other_apps(tmp_path, monkeypatch):
+    from meetinglight import platform_windows as platform
+    entry = tmp_path / "MeetingLight.vbs"
+    other = tmp_path / "WindowsAudioPower.vbs"
+    other.write_text("existing speaker launcher")
+    monkeypatch.setattr(platform, "startup_path", lambda: entry)
+    platform.set_startup(True)
+    assert platform.launch_command().replace('"', '""') in entry.read_text()
+    assert "--background" in entry.read_text()
+    platform.set_startup(False)
+    assert not entry.exists()
+    assert other.read_text() == "existing speaker launcher"

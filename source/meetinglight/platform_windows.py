@@ -32,6 +32,15 @@ def protect(data: bytes, decrypt=False):
         kernel.LocalFree(dest.data)
 
 
+def set_app_identity():
+    """Keep taskbar grouping separate from generic Python windows."""
+    shell = ctypes.WinDLL("shell32")
+    shell.SetCurrentProcessExplicitAppUserModelID.argtypes = [wintypes.LPCWSTR]
+    shell.SetCurrentProcessExplicitAppUserModelID.restype = ctypes.c_long
+    if shell.SetCurrentProcessExplicitAppUserModelID("KonradKollnig.MeetingLight") < 0:
+        raise OSError("Application identity could not be set")
+
+
 def data_dir():
     return Path(os.environ["LOCALAPPDATA"]) / "MeetingLight" / "data"
 
