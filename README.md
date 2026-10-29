@@ -60,3 +60,8 @@ Run `Uninstall.ps1` to stop this application and remove its startup registration
 From `source`, run `.venv\Scripts\python.exe -m pytest` after installing pytest. Tests use synthetic calendars. A safe visual demonstration is `.venv\Scripts\python.exe run.py --demo`; its synthetic Join links point to example.com.
 
 Windows is supported, and macOS is available as a preview with native Keychain encryption, menu-bar integration and login startup. Linux is not included in this release. Downloaded Windows ZIPs contain MeetingLight.exe and its companion _internal folder; keep them together. No Python installation is required for release downloads. Move the extracted folder to its permanent location before enabling sign-in startup.
+## License
+
+Copyright (C) 2026 Konrad Kollnig.
+
+Meeting Light is licensed under the [GNU General Public License version 3](LICENSE) (SPDX: `GPL-3.0-only`). It is provided without warranty. Third-party dependencies retain their respective licenses.
