@@ -1,7 +1,7 @@
 from pathlib import Path
 from meetinglight.storage import Store
 from meetinglight.feeds import import_sources, load_source
-from meetinglight.platform_windows import InstanceLock
+from meetinglight.platform_api import InstanceLock
 from test_core import NOW, calendar, vevent
 import pytest
 
@@ -73,6 +73,7 @@ def test_instance_lock(tmp_path):
     third.close()
 
 
+@pytest.mark.skipif(__import__("sys").platform != "win32", reason="Windows startup adapter")
 def test_startup_can_be_enabled_and_disabled_without_touching_other_apps(tmp_path, monkeypatch):
     from meetinglight import platform_windows as platform
     entry = tmp_path / "MeetingLight.vbs"

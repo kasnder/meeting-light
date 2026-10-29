@@ -77,6 +77,8 @@ def set_startup(enabled):
 
 
 def launch_command():
+    if getattr(sys, "frozen", False):
+        return f'"{sys.executable}"'
     pythonw = Path(sys.executable).with_name("pythonw.exe")
     entry = Path(__file__).resolve().parent.parent / "run.py"
     return f'"{pythonw}" "{entry}"'
@@ -163,3 +165,17 @@ class SessionObserver:
         self.wts.WTSUnRegisterSessionNotification.argtypes = [wintypes.HWND]
         self.wts.WTSUnRegisterSessionNotification(self.hwnd)
         self.user.SetWindowLongPtrW(self.hwnd, -4, self.previous)
+
+
+def start_tray(icon, on_error):
+    import threading
+    def worker():
+        try:
+            icon.run()
+        except Exception:
+            on_error()
+    threading.Thread(target=worker, daemon=True).start()
+
+
+def stop_tray(icon):
+    icon.stop()

@@ -1,0 +1,44 @@
+name: Build desktop release
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            asset: windows-x64
+          - os: macos-15
+            asset: macos-arm64
+          - os: macos-15-intel
+            asset: macos-intel
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prepare macOS CI keychain
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          security create-keychain -p temporary-ci-keychain "$RUNNER_TEMP/meetinglight.keychain-db"
+          security set-keychain-settings -lut 3600 "$RUNNER_TEMP/meetinglight.keychain-db"
+          security unlock-keychain -p temporary-ci-keychain "$RUNNER_TEMP/meetinglight.keychain-db"
+          security list-keychains -d user -s "$RUNNER_TEMP/meetinglight.keychain-db"
+          security default-keychain -d user -s "$RUNNER_TEMP/meetinglight.keychain-db"
+      - name: Install dependencies
+        run: python -m pip install -r source/requirements.txt pytest==9.2.0 pyinstaller==6.22.3
+      - name: Run tests
+        run: python -m pytest source/tests -q
+      - name: Build and smoke-test application
+        run: python scripts/build_release.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: artifacts/*
+          if-no-files-found: error

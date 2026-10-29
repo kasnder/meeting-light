@@ -9,3 +9,8 @@ data/
 .env
 .env.*
 *.log
+
+build/
+dist/
+artifacts/
+*.spec

@@ -6,11 +6,11 @@ if __name__ == "__main__":
         from meetinglight.app import main
         main()
     except Exception:
-        if "--smoke" in sys.argv:
+        if "--smoke" in sys.argv or "--self-check" in sys.argv:
             print('{"ok": false, "error": "Application check failed; private details suppressed"}')
             sys.exit(1)
-        import ctypes
-        ctypes.windll.user32.MessageBoxW(None,
+        from tkinter import messagebox
+        messagebox.showerror("Meeting Light",
             "Meeting Light could not start. Check the Python environment and encrypted data access. "
-            "No private details have been logged.", "Meeting Light", 0x10)
+            "No private details have been logged.")
         sys.exit(1)

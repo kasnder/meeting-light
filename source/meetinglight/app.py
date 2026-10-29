@@ -17,7 +17,7 @@ from PIL import Image, ImageDraw, ImageTk
 from .core import DEFAULTS, Event, Scheduler, eligible, merge_events, now_utc, UTC
 from .feeds import import_sources, load_all
 from .storage import Store
-from . import platform_windows as platform
+from . import platform_api as platform
 
 PALETTE = ("#2563eb", "#a855f7", "#059669", "#d97706", "#db2777")
 
@@ -102,13 +102,7 @@ class App:
                 pystray.MenuItem("Test reminder", lambda *a: self.commands.put("test")),
                 pystray.Menu.SEPARATOR,
                 pystray.MenuItem("Exit", lambda *a: self.commands.put("exit"))))
-        # Windows pystray supports a worker thread; Tk owns the main UI thread.
-        def tray_worker():
-            try:
-                self.tray.run()
-            except Exception:
-                self.commands.put("tray_error")
-        threading.Thread(target=tray_worker, daemon=True).start()
+        platform.start_tray(self.tray, lambda: self.commands.put("tray_error"))
         if demo:
             self.sources = [dict(id="demo", name="Sample calendar", enabled=True)]
             now = now_utc()
@@ -272,7 +266,7 @@ class App:
                         self.popup.withdraw()
                 elif command == "tray_error":
                     self.root.deiconify()
-                    messagebox.showwarning("Meeting Light", "The tray icon could not start. Keep this window open and restart the app from your normal Windows desktop.", parent=self.root)
+                    messagebox.showwarning("Meeting Light", "The tray icon could not start. Keep this window open and restart the app from your normal desktop.", parent=self.root)
             if time.monotonic() >= self.next_refresh:
                 self.refresh()
             if not self.locked:
@@ -565,7 +559,7 @@ class App:
         self.closing = True
         self.persist_states()
         self.observer.close()
-        self.tray.stop()
+        platform.stop_tray(self.tray)
         self.root.destroy()
 
     def run(self):
@@ -576,19 +570,23 @@ def main():
     parser = argparse.ArgumentParser(description="Meeting Light — private calendar reminders")
     parser.add_argument("--background", action="store_true")
     parser.add_argument("--demo", action="store_true")
+    parser.add_argument("--self-check", action="store_true")
     parser.add_argument("--data-dir", type=Path)
     parser.add_argument("--smoke", action="store_true", help="Check private feeds; emit only aggregate counts")
     parser.add_argument("--enable-startup", action="store_true")
     parser.add_argument("--disable-startup", action="store_true")
     args = parser.parse_args()
+    if args.self_check:
+        from .selfcheck import run
+        run()
+        return
     directory = args.data_dir or platform.data_dir()
     if args.demo:
         directory = args.data_dir or platform.data_dir().parent / "demo"
     lock = platform.InstanceLock(directory)
     if not lock.acquired:
         if not args.background:
-            import ctypes
-            ctypes.windll.user32.MessageBoxW(None, "Meeting Light is already running. Open Upcoming events from its tray icon.", "Meeting Light", 0x40)
+            messagebox.showinfo("Meeting Light", "Meeting Light is already running. Open Upcoming events from its tray icon.")
         return
     try:
         store = Store(directory)

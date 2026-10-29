@@ -1,7 +1,7 @@
 import json
 import os
 from pathlib import Path
-from .platform_windows import protect
+from .platform_api import protect
 
 
 class Store:
