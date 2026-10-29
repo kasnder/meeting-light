@@ -66,33 +66,49 @@ Downloads go directly to calendar sources over HTTPS without redirects or enviro
 
 Your computer must be awake, you must be signed in, and the app must be running. After wake/unlock it refreshes and shows unacknowledged events still in progress without opening overdue links. Sound follows your system volume. Exclusive fullscreen applications may obscure normal always-on-top windows. Real-device sleep/wake and multi-monitor testing on Mac remains outstanding.
 
-## Run from Python (optional)
+## Run from Python without compiling
 
-For developers or users with **Python 3.12+ and Tkinter** already installed. Release users can skip this section.
+You can run the source directly with **Python 3.12 or newer and Tkinter**. No compilation, PyInstaller, Xcode, or .NET SDK is needed. Download and extract the repository's source ZIP, or clone it, then open a terminal in the project folder.
 
-On Windows, run `Install.ps1` in PowerShell. It creates `source\.venv`, installs the dependencies, creates a normal **Meeting Light** shortcut in the project folder, enables sign-in startup, and starts the app. To select Python explicitly:
+### Windows (PowerShell)
+
+```powershell
+py -3 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install --only-binary=:all: -r source/requirements.txt
+.\.venv\Scripts\pythonw.exe source/run.py
+```
+
+`pythonw.exe` runs without a console window. To see startup output while troubleshooting, use `.\.venv\Scripts\python.exe source/run.py` instead. If `py` is unavailable, replace it with the path to your installed `python.exe` when creating the environment.
+
+**Optional shortcut setup:** `Install.ps1` creates a separate environment at `source\.venv`, installs dependencies, creates a normal **Meeting Light** shortcut in the project folder, enables sign-in startup, and starts the app. Run this instead of the manual commands if you want that setup:
 
 ```powershell
 .\Install.ps1 -Python 'C:\path\to\python.exe'
 ```
 
-Use `-NoStartup` to skip startup registration. Exit the app before reinstalling. `Uninstall.ps1` stops this source installation, removes its shortcut and startup entry, and preserves the source, environment, encrypted data, and original import file.
+Use `-NoStartup` to skip startup registration. Exit the app before reinstalling. `Uninstall.ps1` applies to this helper-managed installation: it stops the app and removes its shortcut and startup entry, while preserving source files, the environment, encrypted data, and your original import file.
 
-On macOS:
+### macOS (Terminal)
 
 ```sh
 python3 -m venv .venv
-.venv/bin/python -m pip install -r source/requirements.txt
+.venv/bin/python -m pip install --only-binary=:all: -r source/requirements.txt
 .venv/bin/python source/run.py
 ```
 
-Use the packaged app if Python asks to build native dependencies from source; no local SDK is needed for the downloads. Source and packaged installations share the same app data and should not run together.
+Run these commands from the project folder each time you start the source app; after the first setup, only the final command is needed. The same is true of the Windows commands above. Configure startup through **Settings → Reminders → Start Meeting Light when I sign in** to avoid starting it manually.
+
+`--only-binary=:all:` prevents pip from attempting to compile native dependencies. If no compatible wheel is available, use a supported Python version or the prebuilt release instead of installing build SDKs. If Tkinter is missing, use a Python distribution that includes it. Source and packaged installations share the same app data and should not run together.
 
 ## Development and verification
 
 Calendar parsing, filtering and scheduling live in `source/meetinglight/core.py`; desktop integration is separated into Windows and macOS adapters. Linux is not included in this release.
 
 Install pytest into your environment and run `python -m pytest source/tests -q` using that environment's Python. Tests use synthetic calendars. `python source/run.py --demo` shows synthetic events whose Join links point to example.com. GitHub builds also run `--self-check` against each packaged app to verify encrypted storage, a timed popup, dismissal, and tray/menu-bar initialization.
+
+## Theme
+
+The interface uses [Sun Valley ttk](https://github.com/rdbende/Sun-Valley-ttk-theme) by rdbende. Its [MIT license](licenses/Sun-Valley-LICENSE) is included with the source and release packages.
 
 ## License
 

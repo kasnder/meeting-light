@@ -20,7 +20,7 @@ With an existing Python 3.12+ installation including Tkinter:
 
 ```sh
 python3 -m venv .venv
-.venv/bin/python -m pip install -r source/requirements.txt
+.venv/bin/python -m pip install --only-binary=:all: -r source/requirements.txt
 .venv/bin/python source/run.py
 ```
 

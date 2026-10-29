@@ -18,7 +18,7 @@ if (-not (Test-Path -LiteralPath (Join-Path $environmentDir 'Scripts\python.exe'
     if ($LASTEXITCODE -ne 0) { throw 'Could not create the isolated Python environment.' }
 }
 $appPython = Join-Path $environmentDir 'Scripts\python.exe'
-& $appPython -m pip install -r (Join-Path $projectDir 'requirements.txt')
+& $appPython -m pip install --only-binary=:all: -r (Join-Path $projectDir 'requirements.txt')
 if ($LASTEXITCODE -ne 0) { throw 'Dependency installation failed.' }
 if (-not $NoStartup) {
     & $appPython (Join-Path $projectDir 'run.py') --enable-startup

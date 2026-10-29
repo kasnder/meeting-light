@@ -7,3 +7,4 @@ requests==2.34.2
 
 keyring>=25,<26; sys_platform == "darwin"
 cryptography>=46,<48; sys_platform == "darwin"
+sv-ttk==2.6.1

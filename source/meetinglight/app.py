@@ -12,6 +12,8 @@ from tkinter import ttk, filedialog, messagebox
 import webbrowser
 
 import pystray
+import sv_ttk
+from tkinter import font as tkfont
 from PIL import Image, ImageDraw, ImageTk
 
 from .core import DEFAULTS, Event, Scheduler, eligible, merge_events, now_utc, UTC
@@ -128,18 +130,14 @@ class App:
         self.root.after(250, self.tick)
 
     def apply_style(self):
+        sv_ttk.set_theme("light", root=self.root)
         style = ttk.Style(self.root)
-        style.theme_use("clam")
-        style.configure(".", font=("Segoe UI", 10), background="#f5f7fb", foreground="#152238")
-        style.configure("TButton", padding=(12, 7))
-        style.configure("Heading.TLabel", font=("Segoe UI", 21, "bold"))
+        self.background = style.lookup("TFrame", "background") or "#fafafa"
+        family = tkfont.nametofont("TkDefaultFont").actual("family")
+        style.configure("Heading.TLabel", font=(family, 21, "bold"))
         style.configure("Sub.TLabel", foreground="#52627a")
-        style.configure("Accent.TButton", background="#2563eb", foreground="white")
-        style.map("Accent.TButton", background=[("active", "#1d4ed8")])
-        style.configure("Treeview", rowheight=37, background="white", fieldbackground="white")
-        style.configure("Treeview.Heading", font=("Segoe UI", 10, "bold"), padding=7)
-        style.configure("TNotebook.Tab", padding=(18, 9))
-        self.root.configure(background="#f5f7fb")
+        style.configure("Treeview", rowheight=37)
+        self.root.configure(background=self.background)
 
     def build_agenda(self):
         frame = ttk.Frame(self.root, padding=24)
@@ -320,7 +318,7 @@ class App:
     def scroll_frame(self, parent):
         holder = ttk.Frame(parent)
         holder.pack(fill="both", expand=True)
-        canvas = tk.Canvas(holder, bg="#f5f7fb", highlightthickness=0)
+        canvas = tk.Canvas(holder, bg=self.background, highlightthickness=0)
         scrollbar = ttk.Scrollbar(holder, orient="vertical", command=canvas.yview)
         inner = ttk.Frame(canvas, padding=18)
         ident = canvas.create_window((0, 0), window=inner, anchor="nw")
@@ -350,7 +348,7 @@ class App:
                 self.popup.destroy()
             self.popup = tk.Toplevel(self.root)
             self.popup.withdraw()
-            self.popup.configure(background="#f5f7fb")
+            self.popup.configure(background=self.background)
             self.popup.title("Meeting Light — Reminder")
             self.popup.attributes("-topmost", True)
             self.popup.protocol("WM_DELETE_WINDOW", self.dismiss_visible)
@@ -452,8 +450,8 @@ class App:
             return
         win = self.settings_window = tk.Toplevel(self.root)
         win.title("Meeting Light — Settings")
-        win.geometry("640x600")
-        win.minsize(600, 550)
+        win.geometry("680x640")
+        win.minsize(650, 600)
         notebook = ttk.Notebook(win)
         notebook.pack(fill="both", expand=True, padx=18, pady=18)
         general, filtering, calendars = (ttk.Frame(notebook, padding=20) for _ in range(3))

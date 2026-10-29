@@ -25,7 +25,7 @@ icon = build / ('icon.icns' if mac else 'icon.ico')
 image.save(icon)
 args = [sys.executable, '-m', 'PyInstaller', '--noconfirm', '--clean', '--onedir',
         '--name', 'MeetingLight', '--icon', str(icon), '--paths', str(root / 'source'),
-        '--collect-all', 'tzdata', '--hidden-import', 'PIL._tkinter_finder',
+        '--collect-all', 'tzdata', '--collect-all', 'sv_ttk', '--hidden-import', 'PIL._tkinter_finder',
         '--distpath', str(root / 'dist'), '--workpath', str(build / 'pyinstaller'), '--specpath', str(build)]
 if mac:
     args += ['--windowed', '--osx-bundle-identifier', 'net.kollnig.MeetingLight',
@@ -39,6 +39,7 @@ bundle = root / 'dist' / ('MeetingLight.app' if mac else 'MeetingLight')
 documentation = bundle / 'Contents/Resources' if mac else bundle
 for name in ('LICENSE', 'README.md', 'MACOS.md'):
     shutil.copyfile(root / name, documentation / name)
+shutil.copytree(root / 'licenses', documentation / 'licenses', dirs_exist_ok=True)
 if mac:
     import plistlib
     plist = bundle / 'Contents/Info.plist'
