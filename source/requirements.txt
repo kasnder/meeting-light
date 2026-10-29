@@ -1,0 +1,6 @@
+icalendar==7.3.0
+recurring-ical-events==3.8.2
+pystray==0.19.5
+Pillow==13.0.0
+tzlocal==5.4.5
+requests==2.34.2
