@@ -6,7 +6,7 @@ if __name__ == "__main__":
         from meetinglight.app import main
         main()
     except Exception:
-        if "--smoke" in sys.argv or "--self-check" in sys.argv:
+        if "--self-check" in sys.argv:
             print('{"ok": false, "error": "Application check failed; private details suppressed"}')
             sys.exit(1)
         from tkinter import messagebox

@@ -7,4 +7,5 @@ Get-CimInstance Win32_Process -Filter "Name='pythonw.exe'" |
 $appPython = Join-Path $PSScriptRoot 'source\.venv\Scripts\python.exe'
 & $appPython $entry --disable-startup
 if ($LASTEXITCODE -ne 0) { throw 'Could not remove sign-in startup.' }
-Write-Output 'Meeting Light stopped and sign-in startup removed. Source files, encrypted calendar data, and cal.txt were preserved.'
+Remove-Item -LiteralPath (Join-Path $PSScriptRoot 'Meeting Light.lnk') -ErrorAction SilentlyContinue
+Write-Output 'Meeting Light stopped and sign-in startup removed. Source files, encrypted calendar data, and your original import file were preserved.'

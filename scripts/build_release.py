@@ -36,11 +36,14 @@ else:
 args.append(str(root / 'source' / 'run.py'))
 subprocess.run(args, check=True, cwd=root)
 bundle = root / 'dist' / ('MeetingLight.app' if mac else 'MeetingLight')
+documentation = bundle / 'Contents/Resources' if mac else bundle
+for name in ('LICENSE', 'README.md', 'MACOS.md'):
+    shutil.copyfile(root / name, documentation / name)
 if mac:
     import plistlib
     plist = bundle / 'Contents/Info.plist'
     data = plistlib.loads(plist.read_bytes())
-    data.update(CFBundleShortVersionString='1.1.0', CFBundleVersion='1.1.0',
+    data.update(CFBundleShortVersionString='1.1.1', CFBundleVersion='1.1.1',
                 NSHighResolutionCapable=True)
     plist.write_bytes(plistlib.dumps(data))
     subprocess.run(['codesign', '--force', '--deep', '--sign', '-', str(bundle)], check=True)

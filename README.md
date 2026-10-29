@@ -1,65 +1,99 @@
 # Meeting Light
 
-Windows and macOS downloads are available under GitHub Releases. See [MACOS.md](MACOS.md) for Mac setup and preview limitations. Builds run on GitHub; no local SDK is required.
-
-A local Python app for Windows and macOS that reminds you about upcoming calendar events. No Google OAuth registration, backend, or telemetry. Run it from Python or use a self-contained release download.
+Local meeting reminders for **Windows and macOS**: a tray/menu-bar agenda, persistent alerts, and one-click meeting links. No Google OAuth registration, backend, or telemetry.
 
 Inspired by [MeetingBar](https://meetingbar.app/), the macOS-only menu-bar app for keeping track of upcoming meetings and joining them in one click. Meeting Light began with the desire for a similar experience on Windows, using private iCal feeds and persistent reminders.
 
-## Start and use
+## Download and start
 
-Double-click **Start Meeting Light.vbs**. The blue calendar icon may be inside Windows' hidden tray icons. Double-click the icon for your seven-day agenda, or right-click for Settings, Refresh now, Test reminder, and Exit. Closing the agenda hides it to the tray; Exit stops reminders.
+Get the packages from [GitHub Releases](https://github.com/kasnder/meeting-light/releases). **No Python, Xcode, or SDK installation is needed.** Builds run on GitHub.
+
+| Computer | Download | Start |
+| --- | --- | --- |
+| Windows, 64-bit Intel/AMD | `MeetingLight-Windows-x86_64.zip` | Extract the entire ZIP and open `MeetingLight.exe` inside the extracted folder. Keep `_internal` beside it. |
+| Mac with Apple Silicon (M1 or newer) | `MeetingLight-macOS-arm64.zip` | Extract, move `MeetingLight.app` to Applications, and open it. |
+| Intel Mac | `MeetingLight-macOS-x86_64.zip` | Extract, move `MeetingLight.app` to Applications, and open it. |
+
+The Mac builds target macOS 15 or newer and remain a preview; see [MACOS.md](MACOS.md). Windows binaries are not Authenticode signed; Mac apps are ad-hoc signed but not Apple Developer ID signed or notarized. Operating-system download/security prompts may appear. SHA-256 files accompany each download.
+
+**Put the app in its permanent location before enabling startup.** Source-code ZIPs are for developers; use the named platform downloads above to run the app directly.
+
+## Connect calendars
+
+1. In Google Calendar, open Settings → your calendar → Integrate calendar → **Secret address in iCal format**.
+2. Put one private HTTPS calendar URL per line in a local text file.
+3. In Meeting Light, open Settings → Calendars → **Import calendars from text file**.
+
+Repeat for additional calendars in the same file. Import replaces the app's calendar list. The app does not search your home folder or automatically import any file.
+
+The source text file remains unchanged and contains plaintext secrets. Do not upload or share it. You do not need to make your calendar public.
+
+## Everyday use
+
+On Windows, open the blue calendar icon in the system tray, possibly under hidden icons. On Mac, use the calendar icon in the menu bar. Open Upcoming events for the seven-day agenda, or choose Settings, Refresh now, Test reminder, or Exit. Closing the agenda hides it; Exit stops reminders.
 
 Defaults:
 
 - Refresh every **30 minutes**, plus startup and wake/unlock.
-- Persistent popup and a short system sound **one minute before** timed events.
-- Exclude exact event titles **busy**, ignoring case and outer spaces.
-- Include events with and without online links; all-day and cancelled events are omitted.
-- Automatic browser opening is **off**. Enable it in Settings to open a meeting page one minute before the start. This does not join the call.
+- Show a persistent popup and play a short sound **one minute before** timed events.
+- Exclude titles exactly matching **busy**, ignoring case and surrounding spaces.
+- Include events with and without online links; omit all-day and cancelled events.
+- Automatic browser opening is **off**. Enable it to open a meeting page one minute before the start; it does not join the call.
 
-The popup has Join meeting, Snooze 1m, Snooze 5m, and Dismiss. Closing it dismisses every event currently shown. Automatic opening keeps the reminder visible; clicking Join acknowledges it. With several distinct links, Join offers a choice instead of automatically opening one.
+The reminder offers Join meeting, Snooze 1m, Snooze 5m, and Dismiss. Closing it dismisses the events currently shown. Multiple distinct meeting links require a choice. Zoom, Google Meet, Microsoft Teams, and Proton Meet are supported.
 
-Settings lets you change reminder/refresh timing, sound, online-only filtering, exclusions, calendar names and enablement, automatic opening, and sign-in startup. Calendar colours distinguish sources in the agenda.
+Settings controls timing, sound, online-only filtering, excluded titles, calendar names/enablement, automatic opening, and startup.
 
-Zoom, Google Meet, Microsoft Teams, and Proton Meet links are recognised. Links open through your default browser; the provider/browser may subsequently offer to open its native app. Browser opening is attempted only once automatically per occurrence; the Join button remains available for retry.
+### Start automatically at sign-in
 
-## Calendars and privacy
+Use **Settings → Reminders → Start Meeting Light when I sign in** to enable or disable startup.
 
-On first start, the app imports one HTTPS calendar URL per nonempty line from `cal.txt` in your user home folder. It does not change that file. Settings → Calendars → Import can replace the source list from another text file. No secret URLs are displayed in Settings.
+- **Windows:** a per-user native registry startup entry launches the app directly. No VBScript launcher is used. Upgrading from an older version removes its obsolete Meeting Light startup script while preserving your preference.
+- **macOS:** a user LaunchAgent launches the app at login.
 
-Google Calendar provides these URLs under Settings → your calendar → Integrate calendar → Secret address in iCal format. Do not make the calendar public or share the URL.
+If you move the app, disable and re-enable the setting from the new location. Before removing it, disable startup and choose Exit. Delete the extracted folder or Mac app to remove the release build; encrypted local data is preserved.
 
-Imported URLs, cached feeds, settings, and reminder state are encrypted for your Windows user using DPAPI under `%LOCALAPPDATA%\MeetingLight\data`. Files cannot simply be copied to another Windows account; re-import the original URLs there. Removed-source cache files may remain encrypted in this data directory. No private event details or URLs are written to logs.
+## Privacy and reliability
 
-Feed downloads go directly to the source over HTTPS without following redirects or using environment proxies. If refresh fails, the last successful cache remains active and the tray icon turns amber. The agenda shows each calendar's last successful sync. New or changed events may take until the next refresh to appear.
+The app encrypts imported URLs, cached feeds, settings, and reminder state:
 
-The computer must be awake, the user signed in, and the app running to show reminders. After wake/unlock it refreshes and shows unacknowledged events still in progress, without reopening overdue meeting links. Sound follows your Windows volume settings. Fullscreen/exclusive applications can obscure ordinary always-on-top windows.
+- **Windows:** user-bound DPAPI encryption, stored under `%LOCALAPPDATA%\MeetingLight\data`.
+- **macOS:** encryption with a Keychain-held key, stored under `~/Library/Application Support/MeetingLight/data`.
 
-## Python installation and startup
+No plaintext app copies of calendar URLs or event data are written to disk. Original import files are your responsibility. Encrypted data cannot simply be transferred to another user account; re-import your URLs there. Removed-calendar cache files may remain encrypted locally. No private event details or URLs are written to logs.
 
-This copy uses the installed **Python 3.14** in an isolated environment at `source\.venv`. The source supports Python 3.12 or later with Tkinter. It does not use or modify the speaker-power app's environment.
+Downloads go directly to calendar sources over HTTPS without redirects or environment proxies. Failed refreshes retain the last successful cache and show a stale-data warning. New changes arrive on a subsequent refresh.
 
-To prepare another copy, run `Install.ps1` in PowerShell. It finds a locally installed Python under `%LOCALAPPDATA%\Python`, installs `source\requirements.txt` into its own environment, registers sign-in startup, and starts the app. Alternatively:
+Your computer must be awake, you must be signed in, and the app must be running. After wake/unlock it refreshes and shows unacknowledged events still in progress without opening overdue links. Sound follows your system volume. Exclusive fullscreen applications may obscure normal always-on-top windows. Real-device sleep/wake and multi-monitor testing on Mac remains outstanding.
+
+## Run from Python (optional)
+
+For developers or users with **Python 3.12+ and Tkinter** already installed. Release users can skip this section.
+
+On Windows, run `Install.ps1` in PowerShell. It creates `source\.venv`, installs the dependencies, creates a normal **Meeting Light** shortcut in the project folder, enables sign-in startup, and starts the app. To select Python explicitly:
 
 ```powershell
 .\Install.ps1 -Python 'C:\path\to\python.exe'
 ```
 
-Use `-NoStartup` to skip registration. Exit a running Meeting Light before reinstalling. The hidden startup launcher is `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\MeetingLight.vbs`; it invokes this app's `pythonw.exe` and `run.py`. Keep the application folder at its current location, or rerun installation after moving it.
+Use `-NoStartup` to skip startup registration. Exit the app before reinstalling. `Uninstall.ps1` stops this source installation, removes its shortcut and startup entry, and preserves the source, environment, encrypted data, and original import file.
 
-Run `Uninstall.ps1` to stop this application and remove its startup registration. It preserves the source, isolated environment, encrypted data, and original `cal.txt`; you can delete the app folder afterward if no longer needed. It does not touch Windows Speaker Power.
+On macOS:
 
-## Source and tests
+```sh
+python3 -m venv .venv
+.venv/bin/python -m pip install -r source/requirements.txt
+.venv/bin/python source/run.py
+```
 
-- `source/meetinglight/core.py`: parsing, filtering, identity, recurrence and scheduling.
-- `source/meetinglight/app.py`: Tkinter interface and thread coordination.
-- `source/meetinglight/platform_windows.py`: secure storage, startup, session events and sound.
-- `source/meetinglight/feeds.py` and `storage.py`: independent feed refreshes and protected caching.
+Use the packaged app if Python asks to build native dependencies from source; no local SDK is needed for the downloads. Source and packaged installations share the same app data and should not run together.
 
-From `source`, run `.venv\Scripts\python.exe -m pytest` after installing pytest. Tests use synthetic calendars. A safe visual demonstration is `.venv\Scripts\python.exe run.py --demo`; its synthetic Join links point to example.com.
+## Development and verification
 
-Windows is supported, and macOS is available as a preview with native Keychain encryption, menu-bar integration and login startup. Linux is not included in this release. Downloaded Windows ZIPs contain MeetingLight.exe and its companion _internal folder; keep them together. No Python installation is required for release downloads. Move the extracted folder to its permanent location before enabling sign-in startup.
+Calendar parsing, filtering and scheduling live in `source/meetinglight/core.py`; desktop integration is separated into Windows and macOS adapters. Linux is not included in this release.
+
+Install pytest into your environment and run `python -m pytest source/tests -q` using that environment's Python. Tests use synthetic calendars. `python source/run.py --demo` shows synthetic events whose Join links point to example.com. GitHub builds also run `--self-check` against each packaged app to verify encrypted storage, a timed popup, dismissal, and tray/menu-bar initialization.
+
 ## License
 
 Copyright (C) 2026 Konrad Kollnig.

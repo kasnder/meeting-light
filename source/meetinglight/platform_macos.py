@@ -129,3 +129,11 @@ class SessionObserver:
     def close(self):
         self.workspace.removeObserver_(self.observer)
         self.distributed.removeObserver_(self.observer)
+
+
+def startup_enabled():
+    return startup_path().exists()
+
+
+def migrate_startup(enabled):
+    pass

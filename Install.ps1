@@ -24,5 +24,13 @@ if (-not $NoStartup) {
     & $appPython (Join-Path $projectDir 'run.py') --enable-startup
     if ($LASTEXITCODE -ne 0) { throw 'Startup registration failed.' }
 }
+# Create an ordinary Windows shortcut; no script runs when it is opened.
+$shell = New-Object -ComObject WScript.Shell
+$shortcut = $shell.CreateShortcut((Join-Path $PSScriptRoot 'Meeting Light.lnk'))
+$shortcut.TargetPath = Join-Path $environmentDir 'Scripts\pythonw.exe'
+$shortcut.Arguments = '"' + (Join-Path $projectDir 'run.py') + '"'
+$shortcut.WorkingDirectory = $projectDir
+$shortcut.IconLocation = Join-Path $projectDir 'assets\meetinglight.ico'
+$shortcut.Save()
 Start-Process -FilePath (Join-Path $environmentDir 'Scripts\pythonw.exe') -ArgumentList ('"' + (Join-Path $projectDir 'run.py') + '" --background') -WindowStyle Hidden
 Write-Output 'Meeting Light is running. Open Upcoming events or Settings from its blue calendar tray icon.'

@@ -5,6 +5,7 @@ import hashlib
 import os
 from pathlib import Path
 import sys
+import winreg
 
 
 class DATA_BLOB(ctypes.Structure):
@@ -61,19 +62,40 @@ class InstanceLock:
             self.handle = None
 
 
-def startup_path():
+RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
+RUN_VALUE = "MeetingLight"
+
+
+def legacy_startup_path():
+    # Only for one-time removal of the pre-1.1.1 launcher.
     return Path(os.environ["APPDATA"]) / "Microsoft/Windows/Start Menu/Programs/Startup/MeetingLight.vbs"
 
 
+def startup_enabled():
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY) as key:
+            command, _ = winreg.QueryValueEx(key, RUN_VALUE)
+            return bool(command)
+    except FileNotFoundError:
+        return False
+
+
 def set_startup(enabled):
-    path = startup_path()
-    if not enabled:
-        path.unlink(missing_ok=True)
-        return
-    command = launch_command() + ' --background'
-    escaped = command.replace('"', '""')
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(f'CreateObject("WScript.Shell").Run "{escaped}", 0, False\n', encoding="utf-8")
+    if enabled:
+        with winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, RUN_KEY, access=winreg.KEY_SET_VALUE) as key:
+            winreg.SetValueEx(key, RUN_VALUE, 0, winreg.REG_SZ, launch_command() + " --background")
+    else:
+        try:
+            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, RUN_KEY, access=winreg.KEY_SET_VALUE) as key:
+                winreg.DeleteValue(key, RUN_VALUE)
+        except FileNotFoundError:
+            pass
+    legacy_startup_path().unlink(missing_ok=True)
+
+
+def migrate_startup(enabled):
+    if legacy_startup_path().exists():
+        set_startup(enabled)
 
 
 def launch_command():

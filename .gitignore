@@ -4,7 +4,8 @@ __pycache__/
 *.bin
 *.tmp
 *.ics
-cal.txt
+*.txt
+!requirements.txt
 data/
 .env
 .env.*
@@ -14,3 +15,5 @@ build/
 dist/
 artifacts/
 *.spec
+
+*.lnk

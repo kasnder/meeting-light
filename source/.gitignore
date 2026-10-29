@@ -4,4 +4,5 @@ __pycache__/
 *.bin
 *.tmp
 *.ics
-cal.txt
+*.txt
+!requirements.txt

@@ -4,7 +4,7 @@ Download the macOS ZIP matching your processor: **arm64** for Apple Silicon (M1 
 
 This preview is ad-hoc signed, not Apple Developer ID signed or notarized. macOS may block first launch. Review the source and release checksum before using Apple's per-app opening approval; do not disable Gatekeeper globally.
 
-Use Settings → Calendars → Import to select a local text file containing one private HTTPS iCal URL per line. You may instead put the file at `~/cal.txt` before first launch. The file remains unchanged and contains plaintext secrets; the app stores its own encrypted copies. Never upload that file to GitHub.
+Use Settings → Calendars → Import to select a local text file containing one private HTTPS iCal URL per line. The file remains unchanged and contains plaintext secrets; the app stores its own encrypted copies. Never upload that file to GitHub.
 
 URLs and cached calendar data are encrypted under `~/Library/Application Support/MeetingLight/data`. The encryption key lives in **macOS Keychain**. If Keychain access is denied, the app does not fall back to plaintext storage. A new build may prompt for Keychain access again.
 

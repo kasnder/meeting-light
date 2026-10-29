@@ -74,15 +74,32 @@ def test_instance_lock(tmp_path):
 
 
 @pytest.mark.skipif(__import__("sys").platform != "win32", reason="Windows startup adapter")
-def test_startup_can_be_enabled_and_disabled_without_touching_other_apps(tmp_path, monkeypatch):
+def test_native_startup_and_legacy_migration(tmp_path, monkeypatch):
+    import uuid
+    import winreg
     from meetinglight import platform_windows as platform
-    entry = tmp_path / "MeetingLight.vbs"
-    other = tmp_path / "WindowsAudioPower.vbs"
-    other.write_text("existing speaker launcher")
-    monkeypatch.setattr(platform, "startup_path", lambda: entry)
-    platform.set_startup(True)
-    assert platform.launch_command().replace('"', '""') in entry.read_text()
-    assert "--background" in entry.read_text()
-    platform.set_startup(False)
-    assert not entry.exists()
-    assert other.read_text() == "existing speaker launcher"
+    run_key = r"Software\MeetingLightTest-" + uuid.uuid4().hex
+    monkeypatch.setattr(platform, "RUN_KEY", run_key)
+    legacy = tmp_path / "MeetingLight.vbs"
+    other = tmp_path / "unrelated.vbs"
+    other.write_text("unchanged")
+    legacy.write_text("obsolete launcher")
+    monkeypatch.setattr(platform, "legacy_startup_path", lambda: legacy)
+    try:
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, run_key) as key:
+            winreg.SetValueEx(key, "AnotherApp", 0, winreg.REG_SZ, "unrelated")
+        platform.migrate_startup(True)
+        assert platform.startup_enabled()
+        assert not legacy.exists()
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, run_key) as key:
+            assert winreg.QueryValueEx(key, "MeetingLight")[0] == platform.launch_command() + " --background"
+        platform.set_startup(False)
+        assert not platform.startup_enabled()
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, run_key) as key:
+            assert winreg.QueryValueEx(key, "AnotherApp")[0] == "unrelated"
+        assert other.read_text() == "unchanged"
+        legacy.write_text("obsolete launcher")
+        platform.migrate_startup(False)
+        assert not legacy.exists() and not platform.startup_enabled()
+    finally:
+        winreg.DeleteKey(winreg.HKEY_CURRENT_USER, run_key)

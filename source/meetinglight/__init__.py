@@ -1,2 +1,2 @@
 """Meeting Light: private, local calendar reminders."""
-VERSION = "1.1.0"
+VERSION = "1.1.1"

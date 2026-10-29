@@ -59,6 +59,9 @@ class App:
         self.store, self.demo = store, demo
         self.config = store.load("config", {"settings": dict(DEFAULTS), "sources": []})
         self.settings = dict(DEFAULTS, **self.config["settings"])
+        if not demo:
+            platform.migrate_startup(self.settings["startup"])
+            self.settings["startup"] = platform.startup_enabled()
         self.sources = self.config["sources"]
         self.states = {} if demo else store.load("states", {})
         self.scheduler = Scheduler(self.states)
@@ -116,14 +119,8 @@ class App:
             self.statuses = {"demo": {"last": now.isoformat(), "error": None}}
             self.next_refresh = float("inf")
         elif not self.sources:
-            initial = Path.home() / "cal.txt"
-            if initial.exists():
-                try:
-                    self.sources = import_sources(initial)
-                    self.save_config()
-                except Exception:
-                    self.status_text.set("Could not import cal.txt. Use Settings → Import calendars.")
-            self.refresh()
+            self.status_text.set("Import your calendars in Settings → Calendars to begin.")
+            self.next_refresh = time.monotonic() + self.settings["refresh_minutes"] * 60
         else:
             self.refresh(cached_first=True)
         if not background or not self.sources:
@@ -572,7 +569,6 @@ def main():
     parser.add_argument("--demo", action="store_true")
     parser.add_argument("--self-check", action="store_true")
     parser.add_argument("--data-dir", type=Path)
-    parser.add_argument("--smoke", action="store_true", help="Check private feeds; emit only aggregate counts")
     parser.add_argument("--enable-startup", action="store_true")
     parser.add_argument("--disable-startup", action="store_true")
     args = parser.parse_args()
@@ -597,13 +593,6 @@ def main():
             config["settings"]["startup"] = enabled
             store.save("config", config)
             print("Sign-in startup " + ("enabled" if enabled else "disabled"))
-            return
-        if args.smoke:
-            sources = import_sources(Path.home() / "cal.txt")
-            rows = load_all(sources, store)
-            print(json.dumps({"feeds": len(rows), "successful": sum(r[2] is not None for r in rows),
-                              "upcoming_occurrences": [len(r[1]) for r in rows],
-                              "ok": all(r[3] is None for r in rows)}))
             return
         App(store, demo=args.demo, background=args.background).run()
     finally:
