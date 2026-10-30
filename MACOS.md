@@ -8,7 +8,7 @@ Use Settings → Calendars → Import to select a local text file containing one
 
 URLs and cached calendar data are encrypted under `~/Library/Application Support/MeetingLight/data`. The encryption key lives in **macOS Keychain**. If Keychain access is denied, the app does not fall back to plaintext storage. A new build may prompt for Keychain access again.
 
-The menu-bar calendar opens the agenda, settings, test reminder, and quit actions. Reminders appear one minute before events; refresh is every 30 minutes. Titles exactly matching “busy” are excluded. These settings and online-only filtering are adjustable.
+The menu-bar calendar opens the agenda, refresh, settings, and quit actions; Settings → Reminders has a test reminder button. Reminders appear one minute before events; refresh is every 30 minutes. Titles exactly matching “busy” are excluded. These settings and online-only filtering are adjustable.
 
 Enable or disable **Start Meeting Light when I sign in** in Settings → Reminders. Enable this only after moving the app to its final location; the setting writes a user LaunchAgent pointing to that location. To remove startup, uncheck the setting before deleting the app. Disabling removes the next-login entry without stopping the currently running app.
 

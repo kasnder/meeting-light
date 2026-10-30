@@ -30,7 +30,7 @@ The source text file remains unchanged and contains plaintext secrets. Do not up
 
 ## Everyday use
 
-On Windows, open the blue calendar icon in the system tray, possibly under hidden icons. On Mac, use the calendar icon in the menu bar. Open Upcoming events for the seven-day agenda, or choose Settings, Refresh now, Test reminder, or Exit. Closing the agenda hides it; Exit stops reminders.
+On Windows, open the blue calendar icon in the system tray, possibly under hidden icons. On Mac, use the calendar icon in the menu bar. Open Upcoming events for the seven-day agenda, or choose Settings, Refresh now, or Exit. Settings → Reminders has a test reminder button. Closing the agenda hides it; Exit stops reminders.
 
 Defaults:
 

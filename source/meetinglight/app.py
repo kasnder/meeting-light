@@ -4,6 +4,7 @@ import argparse
 from datetime import datetime, timedelta
 import json
 import queue
+import sys
 from pathlib import Path
 import threading
 import time
@@ -14,25 +15,15 @@ import webbrowser
 import pystray
 import sv_ttk
 from tkinter import font as tkfont
-from PIL import Image, ImageDraw, ImageTk
+from PIL import ImageTk
 
 from .core import DEFAULTS, Event, Scheduler, eligible, merge_events, now_utc, UTC
 from .feeds import import_sources, load_all
+from .icon import icon_image
 from .storage import Store
 from . import platform_api as platform
 
 PALETTE = ("#2563eb", "#a855f7", "#059669", "#d97706", "#db2777")
-
-
-def icon_image(stale=False):
-    img = Image.new("RGBA", (64, 64), (0, 0, 0, 0))
-    d = ImageDraw.Draw(img)
-    d.rounded_rectangle((4, 8, 60, 60), 12, fill="#d97706" if stale else "#2563eb")
-    d.rectangle((5, 20, 59, 24), fill="white")
-    d.line((20, 4, 20, 16), fill="white", width=5)
-    d.line((44, 4, 44, 16), fill="white", width=5)
-    d.line((32, 31, 32, 43, 43, 43), fill="white", width=4)
-    return img
 
 
 def countdown(e):
@@ -88,8 +79,10 @@ class App:
         self.root.withdraw()
         # Set Tk's default for this window and all subsequent Toplevels.
         # Keep PhotoImage references alive for the lifetime of the application.
-        self.window_icons = [ImageTk.PhotoImage(icon_image().resize((size, size), Image.Resampling.LANCZOS), master=self.root)
-                             for size in (16, 32, 48, 64)]
+        # On macOS this also sets the Dock icon, which needs Apple's padded grid.
+        mac = sys.platform == "darwin"
+        self.window_icons = [ImageTk.PhotoImage(icon_image(size, padded=mac), master=self.root)
+                             for size in ((512, 256, 128) if mac else (16, 32, 48, 64))]
         self.root.iconphoto(True, *self.window_icons)
         self.root.title("Meeting Light" + (" — Demo" if demo else ""))
         self.root.geometry("850x540")
@@ -104,7 +97,6 @@ class App:
                 pystray.MenuItem("Upcoming events", lambda *a: self.commands.put("agenda"), default=True),
                 pystray.MenuItem("Refresh now", lambda *a: self.commands.put("refresh")),
                 pystray.MenuItem("Settings", lambda *a: self.commands.put("settings")),
-                pystray.MenuItem("Test reminder", lambda *a: self.commands.put("test")),
                 pystray.Menu.SEPARATOR,
                 pystray.MenuItem("Exit", lambda *a: self.commands.put("exit"))))
         platform.start_tray(self.tray, lambda: self.commands.put("tray_error"))
@@ -149,7 +141,6 @@ class App:
         self.refresh_button = ttk.Button(bar, text="Refresh now", command=self.refresh)
         self.refresh_button.pack(side="left")
         ttk.Button(bar, text="Settings", command=self.show_settings).pack(side="left", padx=8)
-        ttk.Button(bar, text="Test reminder", command=self.test_reminder).pack(side="left")
         ttk.Button(bar, text="Hide to tray", command=self.root.withdraw).pack(side="right")
         table = ttk.Frame(frame)
         table.pack(fill="both", expand=True)
@@ -248,8 +239,6 @@ class App:
                     self.root.lift()
                 elif command == "settings":
                     self.show_settings()
-                elif command == "test":
-                    self.test_reminder()
                 elif command in ("refresh", "resume", "time"):
                     if command != "refresh":
                         self.recovering = True
@@ -311,7 +300,7 @@ class App:
             messages.insert(0, "No matching upcoming events.")
         self.status_text.set("\n".join(messages) if messages else "Import calendar URLs in Settings to begin.")
         if getattr(self, "tray_stale", None) != stale:
-            self.tray.icon = icon_image(stale)
+            self.tray.icon = icon_image(stale=stale)
             self.tray.title = "Meeting Light — calendars need attention" if stale else "Meeting Light"
             self.tray_stale = stale
 
@@ -475,6 +464,7 @@ class App:
             if key == "startup" and self.demo:
                 box.configure(state="disabled")
         ttk.Label(general, text="Automatic opening opens the page in your default browser.\nIt does not join the call or enable your camera/microphone.", style="Sub.TLabel", wraplength=490).grid(row=5, column=0, columnspan=2, sticky="w", pady=20)
+        ttk.Button(general, text="Show a test reminder", command=self.test_reminder).grid(row=6, column=0, sticky="w")
         values["online_only"] = tk.BooleanVar(value=self.settings["online_only"])
         ttk.Checkbutton(filtering, text="Only remind for online meetings", variable=values["online_only"]).pack(anchor="w")
         ttk.Label(filtering, text="Zoom, Google Meet, Teams and Proton Meet", style="Sub.TLabel").pack(anchor="w", pady=(5, 24))

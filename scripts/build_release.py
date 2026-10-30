@@ -8,21 +8,16 @@ import shutil
 import subprocess
 import sys
 import zipfile
-from PIL import Image, ImageDraw
 
 root = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(root / 'source'))
+from meetinglight.icon import icon_image
+
 build = root / 'build'
 build.mkdir(exist_ok=True)
-image = Image.new('RGBA', (1024, 1024))
-d = ImageDraw.Draw(image)
-d.rounded_rectangle((64, 128, 960, 960), 180, fill='#2563eb')
-d.rectangle((80, 320, 944, 384), fill='white')
-for x in (320, 704):
-    d.line((x, 64, x, 256), fill='white', width=80)
-d.line((512, 496, 512, 688, 688, 688), fill='white', width=64)
 mac = sys.platform == 'darwin'
 icon = build / ('icon.icns' if mac else 'icon.ico')
-image.save(icon)
+icon_image(1024, padded=mac).save(icon)
 args = [sys.executable, '-m', 'PyInstaller', '--noconfirm', '--clean', '--onedir',
         '--name', 'MeetingLight', '--icon', str(icon), '--paths', str(root / 'source'),
         '--collect-all', 'tzdata', '--collect-all', 'sv_ttk', '--hidden-import', 'PIL._tkinter_finder',
