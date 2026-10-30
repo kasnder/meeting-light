@@ -128,6 +128,11 @@ def show_without_focus(window):
     user.SetWindowLongPtrW(hwnd, -20, old)
 
 
+def bring_to_front(window):
+    window.deiconify()
+    window.lift()
+
+
 def center(window, preferred_height=300):
     """Centre on the cursor's monitor, with no foreground activation."""
     user = ctypes.windll.user32

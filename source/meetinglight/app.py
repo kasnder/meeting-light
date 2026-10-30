@@ -118,7 +118,7 @@ class App:
         else:
             self.refresh(cached_first=True)
         if not background or not self.sources:
-            self.root.deiconify()
+            platform.bring_to_front(self.root)
         self.root.after(250, self.tick)
 
     def apply_style(self):
@@ -235,8 +235,7 @@ class App:
                     self.quit()
                     return
                 elif command == "agenda":
-                    self.root.deiconify()
-                    self.root.lift()
+                    platform.bring_to_front(self.root)
                 elif command == "settings":
                     self.show_settings()
                 elif command in ("refresh", "resume", "time"):
@@ -249,7 +248,7 @@ class App:
                     if self.popup:
                         self.popup.withdraw()
                 elif command == "tray_error":
-                    self.root.deiconify()
+                    platform.bring_to_front(self.root)
                     messagebox.showwarning("Meeting Light", "The tray icon could not start. Keep this window open and restart the app from your normal desktop.", parent=self.root)
             if time.monotonic() >= self.next_refresh:
                 self.refresh()
@@ -435,7 +434,7 @@ class App:
 
     def show_settings(self):
         if self.settings_window and self.settings_window.winfo_exists():
-            self.settings_window.lift()
+            platform.bring_to_front(self.settings_window)
             return
         win = self.settings_window = tk.Toplevel(self.root)
         win.title("Meeting Light — Settings")
@@ -539,6 +538,7 @@ class App:
             win.destroy()
         ttk.Button(bottom, text="Save settings", style="Accent.TButton", command=save).pack(side="right")
         ttk.Button(bottom, text="Cancel", command=win.destroy).pack(side="right", padx=8)
+        platform.bring_to_front(win)
 
     def quit(self):
         self.closing = True

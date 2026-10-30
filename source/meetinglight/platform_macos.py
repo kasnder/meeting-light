@@ -82,11 +82,16 @@ def set_app_identity():
 
 
 def start_tray(icon, on_error):
+    import AppKit
     # Cocoa UI and Tk must share the main thread/event loop.
     try:
         icon.run_detached(setup=lambda tray: None)
         icon.visible = True
+        # Live in the menu bar only; the packaged app also sets LSUIElement.
+        AppKit.NSApp().setActivationPolicy_(AppKit.NSApplicationActivationPolicyAccessory)
     except Exception:
+        # Without a menu-bar item, keep a Dock icon so the app stays reachable.
+        AppKit.NSApp().setActivationPolicy_(AppKit.NSApplicationActivationPolicyRegular)
         on_error()
 
 
@@ -101,6 +106,14 @@ def sound():
 
 def show_without_focus(window):
     window.deiconify()
+
+
+def bring_to_front(window):
+    import AppKit
+    window.deiconify()
+    window.lift()
+    # A menu-bar-only app is not activated by showing a window.
+    AppKit.NSApp().activateIgnoringOtherApps_(True)
 
 
 def center(window, preferred_height=300):
