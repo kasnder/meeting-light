@@ -39,7 +39,7 @@ if mac:
     import plistlib
     plist = bundle / 'Contents/Info.plist'
     data = plistlib.loads(plist.read_bytes())
-    data.update(CFBundleShortVersionString='1.1.1', CFBundleVersion='1.1.1',
+    data.update(CFBundleShortVersionString='1.1.2', CFBundleVersion='1.1.2',
                 NSHighResolutionCapable=True)
     plist.write_bytes(plistlib.dumps(data))
     subprocess.run(['codesign', '--force', '--deep', '--sign', '-', str(bundle)], check=True)
