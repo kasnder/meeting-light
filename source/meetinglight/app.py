@@ -37,6 +37,42 @@ def countdown(e):
     return e.start.astimezone().strftime("%a %d %b, %H:%M")
 
 
+def until_next(events, now, within_minutes=120, chars=10):
+    """Compact menu-bar label for the next meeting starting within the window, else empty."""
+    e = next((e for e in events if e.start > now), None)
+    if e is None or e.start - now > timedelta(minutes=within_minutes):
+        return ""
+    minutes = int((e.start - now).total_seconds() + 59) // 60  # Round up so "1m" lasts until the start.
+    if minutes < 60:
+        when = f"{minutes}m"
+    elif minutes < 1440:
+        when = f"{minutes // 60}h {minutes % 60:02d}m"
+    else:
+        when = f"{minutes // 1440}d {minutes % 1440 // 60}h"
+    title = " ".join(e.title.split())
+    if chars <= 0:
+        return when
+    return f"{when} · {title[:chars].rstrip()}{'…' if len(title) > chars else ''}"
+
+
+def tray_entries(events, now, limit=10):
+    """Day headings and (label, key, joinable) rows for today's and tomorrow's events."""
+    today = now.astimezone().date()
+    entries, heading = [], None
+    for e in events:
+        day = e.start.astimezone().date()
+        if e.end <= now or (day - today).days > 1 or len(entries) >= limit:
+            continue
+        if heading != day:
+            heading = day
+            entries.append("Today" if day <= today else "Tomorrow")
+        title = " ".join(e.title.split())
+        title = title[:40].rstrip() + "…" if len(title) > 41 else title
+        when = "Now" if e.start <= now else e.start.astimezone().strftime("%H:%M")
+        entries.append((f"{when}   {title}", e.key, bool(e.links)))
+    return entries
+
+
 def auto_scrollbar(scrollbar):
     def update(first, last):
         scrollbar.set(first, last)
@@ -92,14 +128,11 @@ class App:
         self.apply_style()
         self.build_agenda()
         self.observer = platform.SessionObserver(self.root, self.commands.put)
+        self.tray_entries = []
         self.tray = pystray.Icon("MeetingLight", icon_image(), "Meeting Light",
-            menu=pystray.Menu(
-                pystray.MenuItem("Upcoming events", lambda *a: self.commands.put("agenda"), default=True),
-                pystray.MenuItem("Refresh now", lambda *a: self.commands.put("refresh")),
-                pystray.MenuItem("Settings", lambda *a: self.commands.put("settings")),
-                pystray.Menu.SEPARATOR,
-                pystray.MenuItem("Exit", lambda *a: self.commands.put("exit"))))
+                                 menu=pystray.Menu(self.tray_menu))
         platform.start_tray(self.tray, lambda: self.commands.put("tray_error"))
+        self.tray_text = None
         if demo:
             self.sources = [dict(id="demo", name="Sample calendar", enabled=True)]
             now = now_utc()
@@ -158,6 +191,25 @@ class App:
         ttk.Button(footer, text="Join selected meeting", style="Accent.TButton", command=self.join_selected).pack(side="right")
         self.status_text = tk.StringVar(value="Loading calendars…")
         ttk.Label(footer, textvariable=self.status_text, wraplength=510, style="Sub.TLabel").pack(side="left", anchor="w")
+
+    def tray_menu(self):
+        """Upcoming meetings first, like MeetingBar; clicking one joins it."""
+        items = []
+        for entry in self.tray_entries:
+            if isinstance(entry, str):
+                items.append(pystray.MenuItem(entry, None, enabled=False))
+            else:
+                label, key, joinable = entry
+                items.append(pystray.MenuItem(label, lambda *a, k=key, j=joinable:
+                                              self.commands.put(("join", k) if j else "agenda")))
+        if items:
+            items.append(pystray.Menu.SEPARATOR)
+        return items + [
+            pystray.MenuItem("Open Meeting Light", lambda *a: self.commands.put("agenda"), default=True),
+            pystray.MenuItem("Settings", lambda *a: self.commands.put("settings")),
+            pystray.MenuItem("Refresh now", lambda *a: self.commands.put("refresh")),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem("Exit", lambda *a: self.commands.put("exit"))]
 
     def ui_error(self):
         self.status_text.set("An action failed. Private details were not logged; retry from the tray.")
@@ -228,7 +280,11 @@ class App:
                     command = self.commands.get_nowait()
                 except queue.Empty:
                     break
-                if isinstance(command, tuple):
+                if isinstance(command, tuple) and command[0] == "join":
+                    event = next((e for e in self.events if e.key == command[1]), None)
+                    if event:
+                        self.join(event)
+                elif isinstance(command, tuple):
                     _, rows, final = command
                     self.handle_results(rows, final)
                 elif command == "exit":
@@ -284,6 +340,18 @@ class App:
             if selected and self.tree.exists(selected[0]):
                 self.tree.selection_set(selected)
             self.last_agenda = signature
+        entries = tray_entries(events, now)
+        if entries != self.tray_entries:
+            self.tray_entries = entries
+            self.tray.update_menu()
+        text = until_next(events, now, self.settings["menu_bar_minutes"], self.settings["menu_bar_chars"])
+        if text != self.tray_text:
+            platform.set_tray_text(self.tray, text)
+            self.tray_text = text
+        title = ("Meeting Light — calendars need attention" if getattr(self, "tray_stale", False)
+                 else "Meeting Light") + (f" · next: {text}" if text else "")
+        if self.tray.title != title:
+            self.tray.title = title
         if self.fetching:
             return
         messages, stale = [], False
@@ -300,8 +368,7 @@ class App:
         self.status_text.set("\n".join(messages) if messages else "Import calendar URLs in Settings to begin.")
         if getattr(self, "tray_stale", None) != stale:
             self.tray.icon = icon_image(stale=stale)
-            self.tray.title = "Meeting Light — calendars need attention" if stale else "Meeting Light"
-            self.tray_stale = stale
+            self.tray_stale = stale  # The tooltip follows on the next tick.
 
     def scroll_frame(self, parent):
         holder = ttk.Frame(parent)
@@ -407,6 +474,7 @@ class App:
                     chooser.destroy()
                     self.open_link(event, link)
                 ttk.Button(chooser, text=f"{provider} · link {i}", command=open_choice).pack(fill="x", padx=20, pady=5)
+            platform.bring_to_front(chooser)  # May be opened from the menu bar while another app is active.
 
     def open_link(self, event, url, automatic=False):
         # Persist first for at-most-once behaviour even if opening a browser crashes.
@@ -442,8 +510,9 @@ class App:
         win.minsize(650, 600)
         notebook = ttk.Notebook(win)
         notebook.pack(fill="both", expand=True, padx=18, pady=18)
-        general, filtering, calendars = (ttk.Frame(notebook, padding=20) for _ in range(3))
+        general, menu_bar, filtering, calendars = (ttk.Frame(notebook, padding=20) for _ in range(4))
         notebook.add(general, text="Reminders")
+        notebook.add(menu_bar, text="Menu bar" if sys.platform == "darwin" else "Tray")
         notebook.add(filtering, text="Filters")
         notebook.add(calendars, text="Calendars")
         values = {}
@@ -464,6 +533,14 @@ class App:
                 box.configure(state="disabled")
         ttk.Label(general, text="Automatic opening opens the page in your default browser.\nIt does not join the call or enable your camera/microphone.", style="Sub.TLabel", wraplength=490).grid(row=5, column=0, columnspan=2, sticky="w", pady=20)
         ttk.Button(general, text="Show a test reminder", command=self.test_reminder).grid(row=6, column=0, sticky="w")
+        for row, (key, label, lo, hi) in enumerate([
+            ("menu_bar_minutes", "Show the next meeting from (minutes before)", 0, 10080),
+            ("menu_bar_chars", "Characters of the meeting title", 0, 60)]):
+            ttk.Label(menu_bar, text=label).grid(row=row, column=0, sticky="w", pady=12)
+            values[key] = tk.StringVar(value=str(self.settings[key]))
+            ttk.Spinbox(menu_bar, from_=lo, to=hi, textvariable=values[key], width=8).grid(row=row, column=1, padx=20)
+        where = "next to the menu-bar icon" if sys.platform == "darwin" else "in the tray icon's tooltip"
+        ttk.Label(menu_bar, text=f"The countdown and title appear {where}.\nUse 0 minutes to hide it, or 0 characters to show only the time.", style="Sub.TLabel", wraplength=490).grid(row=2, column=0, columnspan=2, sticky="w", pady=20)
         values["online_only"] = tk.BooleanVar(value=self.settings["online_only"])
         ttk.Checkbutton(filtering, text="Only remind for online meetings", variable=values["online_only"]).pack(anchor="w")
         ttk.Label(filtering, text="Zoom, Google Meet, Teams and Proton Meet", style="Sub.TLabel").pack(anchor="w", pady=(5, 24))
@@ -513,12 +590,15 @@ class App:
         def save():
             try:
                 lead, refresh = int(values["lead_minutes"].get()), int(values["refresh_minutes"].get())
-                if not 0 <= lead <= 120 or not 1 <= refresh <= 1440:
+                window, chars = int(values["menu_bar_minutes"].get()), int(values["menu_bar_chars"].get())
+                if not 0 <= lead <= 120 or not 1 <= refresh <= 1440 or not 0 <= window <= 10080 or not 0 <= chars <= 60:
                     raise ValueError()
             except ValueError:
-                messagebox.showerror("Meeting Light", "Use 0–120 minutes for reminders and 1–1440 for refresh.", parent=win)
+                messagebox.showerror("Meeting Light", "Use 0–120 minutes for reminders, 1–1440 for refresh,\n"
+                                     "0–10080 minutes for the menu bar and 0–60 title characters.", parent=win)
                 return
-            updated = dict(self.settings, lead_minutes=lead, refresh_minutes=refresh)
+            updated = dict(self.settings, lead_minutes=lead, refresh_minutes=refresh,
+                           menu_bar_minutes=window, menu_bar_chars=chars)
             for key in ("sound", "online_only", "auto_open", "startup"):
                 updated[key] = values[key].get()
             updated["exclusions"] = [line.strip() for line in exclusions.get("1.0", "end").splitlines() if line.strip()]

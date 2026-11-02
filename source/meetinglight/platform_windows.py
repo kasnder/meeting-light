@@ -194,6 +194,10 @@ class SessionObserver:
         self.user.SetWindowLongPtrW(self.hwnd, -4, self.previous)
 
 
+def set_tray_text(icon, text):
+    pass  # The notification area shows icons only; the tooltip carries the countdown.
+
+
 def start_tray(icon, on_error):
     import threading
     def worker():

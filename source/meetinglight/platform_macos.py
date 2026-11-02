@@ -81,6 +81,13 @@ def set_app_identity():
     pass  # App bundle carries its identifier; Tk owns the shared NSApplication.
 
 
+def set_tray_text(icon, text):
+    import AppKit
+    button = icon._status_item.button()
+    button.setTitle_(text and ' ' + text)
+    button.setImagePosition_(AppKit.NSImageLeft)
+
+
 def start_tray(icon, on_error):
     import AppKit
     # Cocoa UI and Tk must share the main thread/event loop.

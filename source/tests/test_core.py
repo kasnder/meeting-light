@@ -51,6 +51,17 @@ def test_links_deduplicate_and_reject_lookalikes():
     assert meeting_links("https://zoom.us/j/12?x=1&amp;y=2")[0][1].endswith("x=1&y=2")
 
 
+def test_variants_of_one_meeting_collapse():
+    teams = ("https://teams.microsoft.com/meet/379126116568101?p=abc "
+             "https://teams.microsoft.com/l/meetup-join/19%3ameeting_x%40thread.v2/0?context=%7b%7d "
+             "https://teams.microsoft.com/meetingOptions/?organizerId=1&tenantId=2")
+    assert meeting_links(teams) == (("Teams", "https://teams.microsoft.com/meet/379126116568101?p=abc"),)
+    assert not meeting_links("https://teams.microsoft.com/meetingOptions/?organizerId=1")
+    assert len(meeting_links("https://us02web.zoom.us/j/123?pwd=abc https://zoom.us/j/123")) == 1
+    assert len(meeting_links("https://meet.google.com/abc-defg-hij https://meet.google.com/abc-defg-hij?hs=1")) == 1
+    assert len(meeting_links("https://zoom.us/j/1 https://zoom.us/j/2 https://meet.google.com/abc")) == 3
+
+
 def test_calendar_recurring_modified_cancelled_and_folded_links():
     body = vevent("RRULE:FREQ=DAILY;COUNT=3\nDESCRIPTION:https://meet.google.com/abc-\n defg-hij")
     body += vevent("RECURRENCE-ID:20261030T130000Z", start="20261030T150000Z", end="20261030T160000Z")
@@ -154,3 +165,34 @@ def test_moved_event_reconciles_reminder():
     assert scheduler.evaluate([e], DEFAULTS, {"one"})[0] == [e]
     moved = replace(e, start=NOW + timedelta(hours=1), end=NOW + timedelta(hours=2))
     assert scheduler.evaluate([moved], DEFAULTS, {"one"})[0] == []
+
+
+def test_menu_bar_countdown():
+    from meetinglight.app import until_next
+    soon = event()
+    assert until_next([replace(soon, start=NOW - timedelta(minutes=5))], NOW) == ""
+    assert until_next([replace(soon, start=NOW + timedelta(seconds=30))], NOW) == "1m · Meeting"
+    assert until_next([replace(soon, start=NOW + timedelta(minutes=59))], NOW) == "59m · Meeting"
+    assert until_next([replace(soon, start=NOW + timedelta(minutes=115), title="REGULAIRE | Consortium Call")],
+                      NOW) == "1h 55m · REGULAIRE…"
+    assert until_next([replace(soon, start=NOW + timedelta(minutes=125))], NOW) == ""
+    assert until_next([replace(soon, start=NOW + timedelta(days=2))], NOW) == ""
+    later = [replace(soon, start=NOW + timedelta(days=2, hours=3), title="REGULAIRE | Consortium Call")]
+    assert until_next(later, NOW, within_minutes=10080) == "2d 3h · REGULAIRE…"
+    assert until_next(later, NOW, within_minutes=10080, chars=3) == "2d 3h · REG…"
+    assert until_next(later, NOW, within_minutes=10080, chars=0) == "2d 3h"
+    assert until_next([soon], NOW, within_minutes=0) == ""
+
+
+def test_tray_entries_group_today_and_tomorrow():
+    from meetinglight.app import tray_entries
+    zoom = (("Zoom", "https://zoom.us/j/1"),)
+    now = datetime.now(UTC).replace(microsecond=0)
+    events = [event("a", "Running", now - timedelta(minutes=5), zoom),
+              event("b", "Later today but with a very long title indeed", now + timedelta(minutes=1)),
+              event("c", "Next week", now + timedelta(days=5))]
+    entries = tray_entries(events, now)
+    assert entries[0] == "Today"
+    assert entries[1] == ("Now   Running", "a", True)
+    assert entries[-1][1] == "b" and entries[-1][0].endswith("…") and entries[-1][2] is False
+    assert "c" not in [x[1] for x in entries if not isinstance(x, str)]

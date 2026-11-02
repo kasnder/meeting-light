@@ -35,15 +35,41 @@ def meeting_links(text):
                     provider = "Zoom"
             elif host == "meet.google.com" and len(p.path) > 1:
                 provider = "Google Meet"
-            elif host in ("teams.microsoft.com", "teams.live.com", "teams.cloud.microsoft") and len(p.path) > 1:
-                provider = "Teams"
+            elif host in ("teams.microsoft.com", "teams.live.com", "teams.cloud.microsoft"):
+                # Invites also link organiser pages such as /meetingOptions/; only join links count.
+                if re.match(r"/(meet/|l/meetup-join/|l/meet/)", p.path):
+                    provider = "Teams"
             elif host == "meet.proton.me" and len(p.path) > 1:
                 provider = "Proton Meet"
-            if provider and (provider, url) not in found:
+            if provider:
                 found.append((provider, url))
         except ValueError:
             continue
-    return tuple(found)
+    return unique_links(found)
+
+
+def link_identity(provider, url):
+    p = urlsplit(url)
+    if provider == "Teams":
+        # One invite carries a short /meet/ link and a long meetup-join link for the
+        # same meeting, with no shared identifier; treat an event's Teams links as one.
+        return provider, ""
+    if provider == "Zoom":
+        number = re.search(r"/(?:j|w|wc|s)/(\d+)", p.path)
+        if number:
+            return provider, number.group(1)
+    return provider, (p.hostname or "").lower() + p.path.rstrip("/").lower()
+
+
+def unique_links(links):
+    """Keep the first link per meeting, so variants of one invite do not prompt a choice."""
+    seen, result = set(), []
+    for provider, url in links:
+        identity = link_identity(provider, url)
+        if identity not in seen:
+            seen.add(identity)
+            result.append((provider, url))
+    return tuple(result)
 
 
 @dataclass(frozen=True)
@@ -113,14 +139,15 @@ def merge_events(events):
         if old:
             merged[e.key] = Event(e.key, old.title, old.start, old.end,
                                   tuple(dict.fromkeys(old.calendars + e.calendars)),
-                                  tuple(dict.fromkeys(old.links + e.links)))
+                                  unique_links(old.links + e.links))
         else:
             merged[e.key] = e
     return sorted(merged.values(), key=lambda e: (e.start, e.title.casefold()))
 
 
 DEFAULTS = dict(refresh_minutes=30, lead_minutes=1, sound=True, online_only=False,
-                auto_open=False, startup=False, exclusions=["busy"])
+                auto_open=False, startup=False, exclusions=["busy"],
+                menu_bar_minutes=120, menu_bar_chars=10)
 
 
 def eligible(e, settings, enabled_sources):
