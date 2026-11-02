@@ -103,3 +103,12 @@ def test_native_startup_and_legacy_migration(tmp_path, monkeypatch):
         assert not legacy.exists() and not platform.startup_enabled()
     finally:
         winreg.DeleteKey(winreg.HKEY_CURRENT_USER, run_key)
+
+
+def test_worker_process_parses_like_in_process(tmp_path):
+    from meetinglight.core import parse_calendar
+    from meetinglight.feeds import parse_isolated
+    raw = calendar(vevent())
+    assert parse_isolated(raw, "a", NOW, fallback=False) == parse_calendar(raw, "a", NOW)
+    with pytest.raises(Exception):
+        parse_isolated(b"broken feed", "a", NOW, fallback=False)
