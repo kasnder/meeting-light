@@ -36,7 +36,7 @@ Defaults:
 
 - Refresh every **30 minutes**, plus startup and wake/unlock.
 - Show a persistent popup and play a short sound **one minute before** timed events.
-- Exclude titles exactly matching **busy**, ignoring case and surrounding spaces.
+- Optional exact-title and title-prefix exclusions, ignoring case and normalizing whitespace. New installs exclude no titles by default.
 - Include events with and without online links; omit all-day and cancelled events.
 - Automatic browser opening is **off**. Enable it to open a meeting page one minute before the start; it does not join the call.
 
@@ -115,3 +115,21 @@ The interface uses [Sun Valley ttk](https://github.com/rdbende/Sun-Valley-ttk-th
 Copyright (C) 2026 Konrad Kollnig.
 
 Meeting Light is licensed under the [GNU General Public License version 3](LICENSE) (SPDX: `GPL-3.0-only`). It is provided without warranty. Third-party dependencies retain their respective licenses.
+
+Windows also offers an optional **floating next-meeting strip**, initially off.
+Enable **Show floating meeting strip** in Settings → Tray or the tray menu.
+It uses the same countdown window and title length as the tray tooltip, appears
+above ordinary windows at the bottom right above the taskbar, and hides while
+Windows is locked or a foreground app fills a screen. At meeting start it moves
+to the next eligible event; normal reminders still handle the current meeting.
+An amber strip means calendar data needs attention. Click to open the agenda
+with that event selected, or drag to move it. Right-click for Settings, Reset
+position, or Hide strip. Its position is saved with your encrypted settings and
+kept within available monitor work areas after display changes.
+
+Settings → Filters has separate fields for exact event titles and title prefixes
+(for example, `Declined:`). Both ignore case and normalize surrounding and repeated
+whitespace. New installs have no title exclusions, including no automatic `busy`
+exclusion. Existing saved exclusions are preserved: if `busy` was saved by an older
+version, remove it in Filters to include those events. Older settings do not record
+whether that entry was a default or an intentional choice.

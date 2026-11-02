@@ -127,6 +127,10 @@ class App:
         self.root.report_callback_exception = lambda *args: self.ui_error()
         self.apply_style()
         self.build_agenda()
+        self.strip = None
+        if sys.platform == 'win32':
+            from .floating_strip import FloatingStrip
+            self.strip = FloatingStrip(self)
         self.observer = platform.SessionObserver(self.root, self.commands.put)
         self.tray_entries = []
         self.tray = pystray.Icon("MeetingLight", icon_image(), "Meeting Light",
@@ -204,6 +208,10 @@ class App:
                                               self.commands.put(("join", k) if j else "agenda")))
         if items:
             items.append(pystray.Menu.SEPARATOR)
+        if sys.platform == 'win32':
+            items.append(pystray.MenuItem('Show floating meeting strip',
+                         lambda *a: self.commands.put('toggle_strip'),
+                         checked=lambda item: bool(self.settings['floating_strip'])))
         return items + [
             pystray.MenuItem("Open Meeting Light", lambda *a: self.commands.put("agenda"), default=True),
             pystray.MenuItem("Settings", lambda *a: self.commands.put("settings")),
@@ -292,6 +300,8 @@ class App:
                     return
                 elif command == "agenda":
                     platform.bring_to_front(self.root)
+                elif command == 'toggle_strip':
+                    self.toggle_strip()
                 elif command == "settings":
                     self.show_settings()
                 elif command in ("refresh", "resume", "time"):
@@ -352,6 +362,9 @@ class App:
                  else "Meeting Light") + (f" · next: {text}" if text else "")
         if self.tray.title != title:
             self.tray.title = title
+        if self.strip:
+            upcoming = next((e for e in events if e.start > now), None)
+            self.strip.update(text, upcoming, getattr(self, 'tray_stale', False))
         if self.fetching:
             return
         messages, stale = [], False
@@ -541,14 +554,21 @@ class App:
             ttk.Spinbox(menu_bar, from_=lo, to=hi, textvariable=values[key], width=8).grid(row=row, column=1, padx=20)
         where = "next to the menu-bar icon" if sys.platform == "darwin" else "in the tray icon's tooltip"
         ttk.Label(menu_bar, text=f"The countdown and title appear {where}.\nUse 0 minutes to hide it, or 0 characters to show only the time.", style="Sub.TLabel", wraplength=490).grid(row=2, column=0, columnspan=2, sticky="w", pady=20)
+        if sys.platform == 'win32':
+            values['floating_strip'] = tk.BooleanVar(value=self.settings['floating_strip'])
+            ttk.Checkbutton(menu_bar, text='Show floating meeting strip', variable=values['floating_strip']).grid(row=3, column=0, columnspan=2, sticky='w')
         values["online_only"] = tk.BooleanVar(value=self.settings["online_only"])
         ttk.Checkbutton(filtering, text="Only remind for online meetings", variable=values["online_only"]).pack(anchor="w")
         ttk.Label(filtering, text="Zoom, Google Meet, Teams and Proton Meet", style="Sub.TLabel").pack(anchor="w", pady=(5, 24))
         ttk.Label(filtering, text="Exclude exact event titles (one per line)").pack(anchor="w")
-        exclusions = tk.Text(filtering, height=8, width=45, font=("Segoe UI", 11), relief="solid", bd=1)
+        exclusions = tk.Text(filtering, height=4, width=45, font=("Segoe UI", 11), relief="solid", bd=1)
         exclusions.insert("1.0", "\n".join(self.settings["exclusions"]))
         exclusions.pack(fill="x", pady=8)
-        ttk.Label(filtering, text="Case and surrounding spaces are ignored.\nAll-day and cancelled events are always omitted.", style="Sub.TLabel").pack(anchor="w")
+        ttk.Label(filtering, text='Exclude title prefixes (one per line, e.g. Declined:)').pack(anchor='w')
+        prefixes = tk.Text(filtering, height=4, width=45, font=('Segoe UI', 11), relief='solid', bd=1)
+        prefixes.insert('1.0', '\n'.join(self.settings['exclusion_prefixes']))
+        prefixes.pack(fill='x', pady=8)
+        ttk.Label(filtering, text="Case and repeated or surrounding spaces are ignored.\nAll-day and cancelled events are always omitted.", style="Sub.TLabel").pack(anchor="w")
         ttk.Label(calendars, text="Private sources are encrypted; URLs are never displayed.", style="Sub.TLabel", wraplength=480).pack(anchor="w", pady=(0, 18))
         source_values = []
         for i, source in enumerate(self.sources):
@@ -601,6 +621,9 @@ class App:
                            menu_bar_minutes=window, menu_bar_chars=chars)
             for key in ("sound", "online_only", "auto_open", "startup"):
                 updated[key] = values[key].get()
+            if 'floating_strip' in values:
+                updated['floating_strip'] = values['floating_strip'].get()
+            updated['exclusion_prefixes'] = [line.strip() for line in prefixes.get('1.0', 'end').splitlines() if line.strip()]
             updated["exclusions"] = [line.strip() for line in exclusions.get("1.0", "end").splitlines() if line.strip()]
             try:
                 if not self.demo and updated["startup"] != self.settings["startup"]:
@@ -619,6 +642,12 @@ class App:
         ttk.Button(bottom, text="Save settings", style="Accent.TButton", command=save).pack(side="right")
         ttk.Button(bottom, text="Cancel", command=win.destroy).pack(side="right", padx=8)
         platform.bring_to_front(win)
+
+    def toggle_strip(self):
+        self.settings['floating_strip'] = not self.settings['floating_strip']
+        self.save_config()
+        self.tray.update_menu()
+        self.update_agenda()
 
     def quit(self):
         self.closing = True

@@ -12,6 +12,7 @@ import zipfile
 root = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(root / 'source'))
 from meetinglight.icon import icon_image
+from meetinglight import VERSION
 
 build = root / 'build'
 build.mkdir(exist_ok=True)
@@ -39,7 +40,7 @@ if mac:
     import plistlib
     plist = bundle / 'Contents/Info.plist'
     data = plistlib.loads(plist.read_bytes())
-    data.update(CFBundleShortVersionString='1.2.1', CFBundleVersion='1.2.1',
+    data.update(CFBundleShortVersionString=VERSION, CFBundleVersion=VERSION,
                 NSHighResolutionCapable=True, LSUIElement=True)
     plist.write_bytes(plistlib.dumps(data))
     subprocess.run(['codesign', '--force', '--deep', '--sign', '-', str(bundle)], check=True)

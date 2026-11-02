@@ -146,13 +146,16 @@ def merge_events(events):
 
 
 DEFAULTS = dict(refresh_minutes=30, lead_minutes=1, sound=True, online_only=False,
-                auto_open=False, startup=False, exclusions=["busy"],
-                menu_bar_minutes=120, menu_bar_chars=10)
+                auto_open=False, startup=False, exclusions=[], exclusion_prefixes=[],
+                menu_bar_minutes=120, menu_bar_chars=10, floating_strip=False, floating_strip_position=None)
 
 
 def eligible(e, settings, enabled_sources):
-    excluded = {x.strip().casefold() for x in settings["exclusions"]}
-    return (e.title.strip().casefold() not in excluded
+    normalize = lambda text: ' '.join(text.split()).casefold()
+    title = normalize(e.title)
+    excluded = {normalize(x) for x in settings['exclusions']}
+    prefixes = tuple(normalize(x) for x in settings.get('exclusion_prefixes', []) if normalize(x))
+    return (title not in excluded and not title.startswith(prefixes)
             and bool(set(e.calendars) & set(enabled_sources))
             and (not settings["online_only"] or bool(e.links)))
 

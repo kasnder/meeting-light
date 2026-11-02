@@ -210,3 +210,87 @@ def start_tray(icon, on_error):
 
 def stop_tray(icon):
     icon.stop()
+
+
+class _MonitorInfo(ctypes.Structure):
+    _fields_ = [('size', wintypes.DWORD), ('monitor', wintypes.RECT),
+                ('work', wintypes.RECT), ('flags', wintypes.DWORD)]
+
+
+def monitor_work_areas():
+    """Primary first; coordinates share the Tk process's DPI coordinate space."""
+    user = ctypes.windll.user32
+    areas = []
+    callback_type = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HANDLE, wintypes.HDC,
+                                      ctypes.POINTER(wintypes.RECT), wintypes.LPARAM)
+    user.GetMonitorInfoW.argtypes = [wintypes.HANDLE, ctypes.POINTER(_MonitorInfo)]
+    def collect(monitor, dc, rect, data):
+        info = _MonitorInfo()
+        info.size = ctypes.sizeof(info)
+        if user.GetMonitorInfoW(monitor, ctypes.byref(info)):
+            r = info.work
+            areas.append((bool(info.flags & 1), (r.left, r.top, r.right, r.bottom)))
+        return True
+    callback = callback_type(collect)
+    if not user.EnumDisplayMonitors(None, None, callback, 0) or not areas:
+        raise OSError('Monitor work areas unavailable')
+    return [rect for primary, rect in sorted(areas, key=lambda a: not a[0])]
+
+
+def _strip_hwnd(window):
+    user = ctypes.windll.user32
+    user.GetParent.argtypes = [wintypes.HWND]
+    user.GetParent.restype = wintypes.HWND
+    return user.GetParent(window.winfo_id()) or window.winfo_id()
+
+
+def position_strip(window, x, y, width, height):
+    user = ctypes.windll.user32
+    user.SetWindowPos.argtypes = [wintypes.HWND, wintypes.HWND, ctypes.c_int, ctypes.c_int,
+                                  ctypes.c_int, ctypes.c_int, wintypes.UINT]
+    user.SetWindowPos(_strip_hwnd(window), wintypes.HWND(-1), x, y, width, height, 0x10)
+
+
+def show_strip_without_focus(window):
+    """Keep NOACTIVATE for the strip's lifetime, including mouse clicks."""
+    user = ctypes.windll.user32
+    hwnd = _strip_hwnd(window)
+    user.GetWindowLongPtrW.argtypes = [wintypes.HWND, ctypes.c_int]
+    user.GetWindowLongPtrW.restype = ctypes.c_ssize_t
+    user.SetWindowLongPtrW.argtypes = [wintypes.HWND, ctypes.c_int, ctypes.c_ssize_t]
+    user.SetWindowLongPtrW.restype = ctypes.c_ssize_t
+    style = user.GetWindowLongPtrW(hwnd, -20)
+    user.SetWindowLongPtrW(hwnd, -20, style | 0x08000000 | 0x80)
+    if not window.winfo_viewable():
+        window.deiconify()
+    user.ShowWindow.argtypes = [wintypes.HWND, ctypes.c_int]
+    user.ShowWindow(hwnd, 4)  # SW_SHOWNOACTIVATE
+
+
+def foreground_fullscreen():
+    user = ctypes.windll.user32
+    user.GetForegroundWindow.restype = wintypes.HWND
+    hwnd = user.GetForegroundWindow()
+    if not hwnd:
+        return False
+    name = ctypes.create_unicode_buffer(128)
+    user.GetClassNameW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
+    user.GetClassNameW(hwnd, name, len(name))
+    if name.value in ('Progman', 'WorkerW', 'Shell_TrayWnd', 'Shell_SecondaryTrayWnd'):
+        return False
+    user.IsIconic.argtypes = [wintypes.HWND]
+    if user.IsIconic(hwnd):
+        return False
+    rect = wintypes.RECT()
+    user.GetWindowRect.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.RECT)]
+    if not user.GetWindowRect(hwnd, ctypes.byref(rect)):
+        return False
+    user.MonitorFromWindow.argtypes = [wintypes.HWND, wintypes.DWORD]
+    user.MonitorFromWindow.restype = wintypes.HANDLE
+    info = _MonitorInfo()
+    info.size = ctypes.sizeof(info)
+    user.GetMonitorInfoW.argtypes = [wintypes.HANDLE, ctypes.POINTER(_MonitorInfo)]
+    if not user.GetMonitorInfoW(user.MonitorFromWindow(hwnd, 2), ctypes.byref(info)):
+        return False
+    m = info.monitor
+    return rect.left <= m.left and rect.top <= m.top and rect.right >= m.right and rect.bottom >= m.bottom

@@ -25,7 +25,7 @@ def vevent(extra="", uid="one", title="Meeting", start="20261029T130000Z", end="
 
 @pytest.mark.parametrize("title,expected", [("busy", False), (" BUSY ", False), ("Busy planning", True), ("Not busy", True)])
 def test_exact_title_filter(title, expected):
-    assert eligible(event(title=title), DEFAULTS, {"one"}) == expected
+    assert eligible(event(title=title), dict(DEFAULTS, exclusions=["busy"]), {"one"}) == expected
 
 
 def test_filters_and_disabled_sources():
@@ -196,3 +196,23 @@ def test_tray_entries_group_today_and_tomorrow():
     assert entries[1] == ("Now   Running", "a", True)
     assert entries[-1][1] == "b" and entries[-1][0].endswith("…") and entries[-1][2] is False
     assert "c" not in [x[1] for x in entries if not isinstance(x, str)]
+
+@pytest.mark.parametrize('title,expected', [
+    ('Declined: Review', False), (' DECLINED:   review ', False),
+    ('A Declined: Review', True), ('Declined', True), ('Declined:Review', False),
+    ('Focus time', False), ('focus   TIME', False), ('Focus time extra', True),
+    ('Busy', True),
+])
+def test_configurable_prefix_and_exact_filters(title, expected):
+    settings = dict(DEFAULTS, exclusions=['Focus time'], exclusion_prefixes=[' Declined: ', ' '])
+    assert eligible(event(title=title), settings, {'one'}) == expected
+
+
+def test_new_defaults_and_old_settings_filters():
+    assert DEFAULTS['exclusions'] == []
+    assert DEFAULTS['exclusion_prefixes'] == []
+    assert eligible(event(title='busy'), DEFAULTS, {'one'})
+    old = dict(DEFAULTS, exclusions=['busy'])
+    old.pop('exclusion_prefixes')
+    assert not eligible(event(title='BUSY'), old, {'one'})
+    assert eligible(event(title='Declined: Review'), old, {'one'})
